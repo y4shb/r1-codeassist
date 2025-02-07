@@ -6,9 +6,11 @@ import ollama from 'ollama';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+	console.log('Attempting to activate r1-codeassist extension');
 
-	//Create a panel with WebView, need to register this under commands in package.json or it does not work (TO-DO)
+	//Create a panel with WebView, need to register this under commands in package.json(DONE)
 	const disposable = vscode.commands.registerCommand('r1-codeassist.ollama', () => {
+		console.log('Command r1-codeassist.ollama was triggered');
 		const panel = vscode.window.createWebviewPanel(
 			'deepChat',
 			'DeepSeek Chat',
@@ -21,18 +23,36 @@ export function activate(context: vscode.ExtensionContext) {
 		panel.webview.onDidReceiveMessage(async (message: any) => {
 			if (message.command === 'chat') {
 				// TO-DO : Add the code to call the Ollama API and get the response
+				const userPrompt = message.text;
+				let responseText = '';
+
+				try {
+						const streamResponse = await ollama.chat({
+						// model: 'deepseek-r1:14b',
+						model: 'deepseek-coder-v2:latest',
+						messages: [{role: 'user', content: userPrompt}],
+						//stream = true sends text from model sentence by sentence instead of waiting for ther model to finsih reponding
+						stream: true
+					});
+					
+					//keep updating the text and pushing it to webview panel
+					for await (const part of streamResponse) {
+						responseText += part.message.content;
+						panel.webview.postMessage({command: 'chatResponse', text: responseText});
+					}
+
+				} catch(err){
+					panel.webview.postMessage({command: 'chatResponse', text: `Error: ${String(err)}`});
+				}
 			}
 		});
 	});
 
-	
-	
+	console.log('Successfully registered r1-codeassist.ollama command');
+
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, "r1-codeassist" is now active!');
-
-	
-	
 
 	context.subscriptions.push(disposable);
 }
@@ -64,6 +84,14 @@ function getWebviewContent() {
 			document.getElementById('askBtn').addEventListener('click', () => {
 				const text = document.getElementById('prompt').value;
 				vscode.postMessage({ command: 'chat', text });
+			});
+
+			//listener for ollama text
+			window.addEventListener('message', event => {
+				const { command, text } = event.data;
+				if (command === 'chatResponse') {
+					document.getElementById('response').innerText = text;
+				}
 			});
 
 		</script>

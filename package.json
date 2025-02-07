@@ -9,13 +9,15 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:r1-codeassist.ollama"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "r1-codeassist.helloWorld",
-        "title": "Hello World"
+        "command": "r1-codeassist.ollama",
+        "title": "Ollama Chat"
       }
     ]
   },
