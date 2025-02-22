@@ -4,26 +4,34 @@ import { Stream } from 'stream';
 import * as vscode from 'vscode';
 import ollama from 'ollama';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+class DeepChatProvider implements vscode.WebviewViewProvider {
+	private _chatView?: vscode.WebviewView;
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	// console.log('Congratulations, your extension "r1-codeassist" is now active!');
+	resolveWebviewView(
+		view: vscode.WebviewView,
+		context: vscode.WebviewViewResolveContext,
+		_token: vscode.CancellationToken,
+	) {
+		this._chatView = view;
+		
+		view.webview.options = { 
+			enableScripts: true 
+		};
 
-	const disposable = vscode.commands.registerCommand('r1-codeassist.deepChat', () => {
-		vscode.window.showInformationMessage('Initializing Deepseek Chat!');
-		const panel = vscode.window.createWebviewPanel(
-			'deepChat',
-			'DeepSeek Chat',
-			vscode.ViewColumn.One,
-			{ enableScripts: true }
-		);
+		// Set the initial size of the sidebar
+		setTimeout(() => {
+			// First focus the view
+			vscode.commands.executeCommand('deepChatView.focus');
+			
+			// Then resize using the correct command
+			for (let i = 0; i < 5; i++) {
+				vscode.commands.executeCommand('workbench.action.increaseViewWidth');
+			}
+		}, 500);
 
-		panel.webview.html = getWebViewContent();
+		view.webview.html = getWebViewContent();
 
-		panel.webview.onDidReceiveMessage(async (message: any) => {
+		view.webview.onDidReceiveMessage(async (message: any) => {
 			if(message.command === 'chat'){
 				const userPrompt = message.text;
 				let responseText = '';
@@ -37,7 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 					for await (const partialResponse of streamResponse) {
 						responseText += partialResponse.message.content;
-						panel.webview.postMessage({ command: 'chatResponse', text: responseText});
+						view.webview.postMessage({ command: 'chatResponse', text: responseText});
 					}
 
 				} catch (error) {
@@ -46,8 +54,28 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 			}
 		});
+	}
+}
 
+// This method is called when your extension is activated
+// Your extension is activated the very first time the command is executed
+export function activate(context: vscode.ExtensionContext) {
+	const chatProvider = new DeepChatProvider();
+	
+	context.subscriptions.push(
+		vscode.window.registerWebviewViewProvider('deepChatView', chatProvider)
+	);
+
+	// Command can now be used to focus the view
+	const disposable = vscode.commands.registerCommand('r1-codeassist.deepChat', () => {
+		vscode.commands.executeCommand('deepChatView.focus');
 	});
+
+	context.subscriptions.push(disposable);
+
+	// Use the console to output diagnostic information (console.log) and errors (console.error)
+	// This line of code will only be executed once when your extension is activated
+	// console.log('Congratulations, your extension "r1-codeassist" is now active!');
 }
 
 // HTML Content for the Webview Panel
