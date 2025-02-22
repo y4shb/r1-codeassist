@@ -12,6 +12,24 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "deepseek-chat",
+          "title": "DeepSeek Chat",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "deepseek-chat": [
+        {
+          "type": "webview",
+          "id": "deepChatView",
+          "name": "DeepSeek Chat"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "r1-codeassist.deepChat",
